@@ -1,7 +1,5 @@
 -- ═══════════════════════════════════════════════════════
 --  DBSB.su UI Library v1.0
---  Nexus-inspired dark purple aesthetic
---  Self-contained — no external dependencies
 --  Usage:
 --      local UI = loadstring(...)() or paste inline
 --      local win = UI:Window("DBSB.su", "Game Name")
