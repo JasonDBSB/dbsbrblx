@@ -153,7 +153,7 @@ end)
 
 -- status label
 local statusLbl = new("TextLabel",{
-    Size=UDim2.new(1,-24,0,14), Position=UDim2.new(0,14,0,24),
+    Size=UDim2.new(1,-24,0,14), Position=UDim2.new(0,14,0,32),
     BackgroundTransparency=1, Text="Enter your license key to continue.",
     TextColor3=T.TextSecond, TextSize=10, Font=F,
     TextXAlignment=Enum.TextXAlignment.Left, ZIndex=4,
@@ -161,7 +161,7 @@ local statusLbl = new("TextLabel",{
 
 -- key input
 local inputBg = new("Frame",{
-    Size=UDim2.new(1,-24,0,38), Position=UDim2.new(0,12,0,46),
+    Size=UDim2.new(1,-24,0,38), Position=UDim2.new(0,12,0,56),
     BackgroundColor3=T.Input, BorderSizePixel=0, ZIndex=3,
 },panel)
 corner(6,inputBg)
@@ -183,7 +183,7 @@ keyBox.FocusLost:Connect(function() tw(iStroke,{Color=T.Border},0.15) end)
 
 -- activate button
 local activateBtn = new("TextButton",{
-    Size=UDim2.new(1,-24,0,38), Position=UDim2.new(0,12,0,96),
+    Size=UDim2.new(1,-24,0,38), Position=UDim2.new(0,12,0,106),
     BackgroundColor3=T.PurpleDark, BorderSizePixel=0,
     Text="", AutoButtonColor=false, ZIndex=3, ClipsDescendants=true,
 },panel)
@@ -203,7 +203,7 @@ activateBtn.MouseLeave:Connect(function() tw(activateBtn,{BackgroundColor3=T.Pur
 
 -- get key button
 local getKeyBtn = new("TextButton",{
-    Size=UDim2.new(1,-24,0,30), Position=UDim2.new(0,12,0,146),
+    Size=UDim2.new(1,-24,0,30), Position=UDim2.new(0,12,0,156),
     BackgroundColor3=T.Card, BorderSizePixel=0,
     Text="", AutoButtonColor=false, ZIndex=3,
 },panel)
@@ -278,24 +278,39 @@ local function validateKey(key)
     activateLbl.Text = "Validating..."
 
     local ok, result = pcall(function()
-        local HS = game:GetService("HttpService")
-        -- KeyAuth REST API v1.3 — direct call, no loader script needed
+        local HS  = game:GetService("HttpService")
         local url = "https://keyauth.win/api/1.3/"
-        local body = HS:JSONEncode({
-            type        = "license",
-            key         = key,
-            name        = KEYAUTH.name,
-            ownerid     = KEYAUTH.ownerid,
-            secret      = KEYAUTH.secret,
-            version     = KEYAUTH.version,
-            hwid        = tostring(game:GetService("RbxAnalyticsService"):GetClientId()),
-        })
-        local response = game:HttpGet(url.."?json="..HS:UrlEncode(body))
-        local data = HS:JSONDecode(response)
-        return data and data.success == true
+        local hwid = tostring(game:GetService("RbxAnalyticsService"):GetClientId())
+
+        -- Step 1: init — get a sessionid
+        local initUrl = url
+            .."?type=init"
+            .."&name="    ..HS:UrlEncode(KEYAUTH.name)
+            .."&ownerid=" ..HS:UrlEncode(KEYAUTH.ownerid)
+            .."&version=" ..HS:UrlEncode(KEYAUTH.version)
+            .."&secret="  ..HS:UrlEncode(KEYAUTH.secret)
+        local initResp = HS:JSONDecode(game:HttpGet(initUrl))
+        if not initResp or not initResp.success then
+            return false, (initResp and initResp.message) or "Init failed"
+        end
+        local sessionid = initResp.sessionid
+
+        -- Step 2: license check
+        local licUrl = url
+            .."?type=license"
+            .."&key="       ..HS:UrlEncode(key)
+            .."&sessionid=" ..HS:UrlEncode(sessionid)
+            .."&name="      ..HS:UrlEncode(KEYAUTH.name)
+            .."&ownerid="   ..HS:UrlEncode(KEYAUTH.ownerid)
+            .."&hwid="      ..HS:UrlEncode(hwid)
+        local licResp = HS:JSONDecode(game:HttpGet(licUrl))
+        return licResp and licResp.success == true, licResp and licResp.message
     end)
 
-    if ok and result then
+    -- ok=true means pcall succeeded; result is the bool from inner return
+    local success = ok and result
+
+    if success then
         setStatus("Key valid! Loading...", T.Green)
         activateLbl.Text = "Loading..."
         tw(activateBtn,{BackgroundColor3=Color3.fromRGB(15,40,20)},0.2)
