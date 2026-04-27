@@ -278,9 +278,21 @@ local function validateKey(key)
     activateLbl.Text = "Validating..."
 
     local ok, result = pcall(function()
-        local loader = loadstring(game:HttpGet("https://keyauth.win/api/loader.lua"))()
-        loader.init(KEYAUTH.name, KEYAUTH.ownerid, KEYAUTH.secret, KEYAUTH.version)
-        return loader.license(key)
+        local HS = game:GetService("HttpService")
+        -- KeyAuth REST API v1.3 — direct call, no loader script needed
+        local url = "https://keyauth.win/api/1.3/"
+        local body = HS:JSONEncode({
+            type        = "license",
+            key         = key,
+            name        = KEYAUTH.name,
+            ownerid     = KEYAUTH.ownerid,
+            secret      = KEYAUTH.secret,
+            version     = KEYAUTH.version,
+            hwid        = tostring(game:GetService("RbxAnalyticsService"):GetClientId()),
+        })
+        local response = game:HttpGet(url.."?json="..HS:UrlEncode(body))
+        local data = HS:JSONDecode(response)
+        return data and data.success == true
     end)
 
     if ok and result then
@@ -290,7 +302,7 @@ local function validateKey(key)
         task.wait(1.2)
         getgenv().__dbsb_auth = "d7f2a91bc84e3065fda28791c430b5e2"
         sg:Destroy()
-        loadstring(game:HttpGet(https://raw.githubusercontent.com/JasonDBSB/dbsbrblx/refs/heads/main/dbsbcrm.lua"))()
+        loadstring(game:HttpGet(SCRIPT_URL))()
     else
         local errMsg = type(result)=="string" and result or "Invalid or expired key."
         setStatus(errMsg, T.Red)
